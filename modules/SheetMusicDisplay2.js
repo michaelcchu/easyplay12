@@ -186,11 +186,22 @@ export default (() => {
         cursor.update();
     }
 
+    function getCurrentNote() {
+        const note = {
+            pitch: 10,
+            octave: 4
+        }
+        return note;
+    }
+
     const body = document.getElementsByTagName('body')[0];
     const script = document.createElement('script');
     script.src ="./opencv.js";
     script.onload = () => {cv['onRuntimeInitialized'] = main;}
     body.appendChild(script);
 
-    return {goToNextNote: goToNextNote};
+    return {
+        goToNextNote: goToNextNote,
+        getCurrentNote: getCurrentNote
+    };
 })();

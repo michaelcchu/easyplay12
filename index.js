@@ -1,5 +1,4 @@
 import SoundGenerator from './modules/SoundGenerator.js';
-import SheetMusicDisplay from './modules/SheetMusicDisplay.js';
 import SheetMusicDisplay2 from './modules/SheetMusicDisplay2.js';
 
 let activePress = null; let press;
@@ -14,9 +13,8 @@ function key(e) {
             && !e.repeat && (document.activeElement.nodeName !== 'INPUT') 
             && (press !== activePress) 
             && splash.classList.contains("splash-toggle")) {
-                SheetMusicDisplay.goToNextNote();
                 SheetMusicDisplay2.goToNextNote();
-                const note = SheetMusicDisplay.getCurrentNote();            
+                const note = SheetMusicDisplay2.getCurrentNote();            
                 if (note) {
                     SoundGenerator.startPlaying(note, activePress);
                     activePress = press;
