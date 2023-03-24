@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<head>
+    <title>EasyPlay11</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=0">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=0">
+    <link rel="icon" type="image/png" sizes="194x194" href="/favicon-194x194.png?v=0">
+    <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png?v=0">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=0">
+    <link rel="manifest" href="/site.webmanifest?v=0">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg?v=0" color="#5bbad5">
+    <link rel="shortcut icon" href="/favicon.ico?v=0">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="/mstile-144x144.png?v=0">
+    <meta name="theme-color" content="#ffffff">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+        rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" 
+        rel="stylesheet">
+    <link href="./styles/styles.css" rel="stylesheet">
+</head>
+<body>
+    <img hidden id="image" src="pastoral.png"/>
+    <img hidden id="template1" src="templates/quarter_line_stem_down.png"/>
+    <img hidden id="template2" src="templates/quarter_space_stem_down.png"/>
+    <img hidden id="template3" src="templates/quarter_line_stem_up.png"/>
+    <img hidden id="template4" src="templates/quarter_space_stem_up.png"/>
+    <img hidden id="template5" src="templates/eighth_line_stem_down.png"/>
+    <img hidden id="template6" src="templates/half_space_stem_up.png"/>
+    <img hidden id="template7" src="templates/half_line_stem_down.png"/>
+    <img hidden id="template8" src="templates/half_space_stem_down.png"/>
+    <img hidden id="template9" src="templates/left_edge_3.png"/>
+    <div class="splash">
+        <a id="start">Click to begin</a>
+    </div>
+    <div class="wrapper">
+        <div class="side-panel">
+            <h1>EasyPlay11</h1>
+            <p>file: <input type="file" id="input" accept=".mxl,.musicxml,.xml,
+                .mei">
+            </p>
+            <p>part: <input id="track" value="1"></p>
+            <div id="tuningBlock">
+                tuning: 
+                <select id="tuningPitch">
+                    <option>a</option>
+                    <option>b</option>
+                    <option>c</option>
+                    <option>d</option>
+                    <option>e</option>
+                    <option>f</option>
+                    <option>g</option>
+                </select>
+                <select id="tuningAccidental">
+                    <option></option>
+                    <option>#</option>
+                    <option>&</option>
+                </select>
+                <select id="tuningOctave">
+                    <option>0</option>
+                    <option>1</option>
+                    <option>2</option>
+                    <option>3</option>
+                    <option selected>4</option>
+                    <option>5</option>
+                    <option>6</option>
+                    <option>7</option>
+                    <option>8</option>
+                </select>
+                = 
+                <input 
+                id="tuningFrequency" 
+                type="number" 
+                value="440" 
+                min="0"
+                step="any"
+                onfocus="this.previousValue = this.value"
+                onkeydown="this.previousValue = this.value"
+                oninput="validity.valid || (value = this.previousValue)">
+            </div>
+            <p>volume: <input id="dbfs" type="range" min="-30" max="0" step="3" 
+                value="0"></p>
+            <p>zoom: <input id="zoomFactor" type="range" min="50" max="150" 
+                step="25" value="100"></p>
+            <p><button id="go">go</button> to measure 
+                <input 
+                id="measureInput" 
+                type="number"
+                value="1"
+                min="1"
+                step="1"
+                onfocus="this.previousValue = this.value"
+                onkeydown="this.previousValue = this.value"
+                oninput="validity.valid || (value = this.previousValue)">
+            </p>
+        </div>
+    
+        <button class="side-panel-toggle" type="button">
+            <span class="material-icons sp-icon-open">
+                keyboard_arrow_down</span>
+            <span class="material-icons sp-icon-close">
+                keyboard_arrow_up</span>
+        </button>
+
+        <button class="left" id="move-left" type="button">
+            <span class="material-icons">
+                keyboard_arrow_left</span>
+        </button>
+
+        <div class="main">
+            <div id="container"></div>
+            <div>
+                Templates: 
+                <canvas id="template1_canvas"></canvas>
+                <canvas id="template2_canvas"></canvas>
+                <canvas id="template3_canvas"></canvas>
+                <canvas id="template4_canvas"></canvas>
+                <canvas id="template5_canvas"></canvas>
+                <canvas id="template6_canvas"></canvas>
+                <canvas id="template7_canvas"></canvas>
+                <canvas id="template8_canvas"></canvas>
+                <canvas id="template9_canvas"></canvas>
+            </div>
+            <div class="canvas_wrapper">
+                <canvas id="img_gray"></canvas>
+                <canvas id="notes"></canvas>
+                <canvas id="left_edges"></canvas>
+                <canvas id="note_center_points"></canvas>
+                <canvas id="left_edge_center_points"></canvas>
+                <canvas id="cursor_layer"></canvas>
+            </div>
+        </div>
+
+        <button class="right" id="move-right" type="button">
+            <span class="material-icons">
+                keyboard_arrow_right</span>
+        </button>
+
+        <button class="footer" id="tap-area"></button>
+    </div>
+    <script src="opencv.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/seamless-scroll-polyfill@latest/lib/bundle.min.js"></script>
+    <script src="./index.js" type="module"></script>
+    <script src="./splash.js"></script>
+    <script src="./panel.js"></script>
+</body>
