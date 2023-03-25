@@ -138,52 +138,41 @@ export default (() => {
         console.log(centroids);
     }
 
-       // cursor
-       function createCursor() {
-        const canvas = document.getElementById('cursor_layer');
-        canvas.width = document.getElementById('image').width;
-        canvas.height = document.getElementById('image').height;
-        const context = canvas.getContext('2d');
-        context.globalAlpha = 0.5;
+    // cursor
+    function createCursor(w, h) {
+        const svg_cursor = document.getElementById('cursor_svg');
+        svg_cursor.setAttribute('height', 
+            document.getElementById('image').height);
+        svg_cursor.setAttribute('width', 
+            document.getElementById('image').width);
         
-        function component(x, y, width, height, color) {
-            this.x = x;
-            this.y = y;
-            this.width = width;
-            this.height = height;
-            this.color = color;
-            this.clear = function() {
-                context.clearRect(this.x, this.y, this.width, this.height);
-            };
-            this.update = function() {
-                context.fillStyle = this.color;
-                context.fillRect(this.x, this.y, this.width, this.height);
-            };
-        }
+        svg_cursor.setAttribute("opacity","0.5");
+
+        const svgns = "http://www.w3.org/2000/svg";
+        const rect = document.createElementNS(svgns, 'rect');
+        rect.setAttribute('x', '0');
+        rect.setAttribute('y', '0');
+        rect.setAttribute('height', ''+h);
+        rect.setAttribute('width', ''+w);
+        rect.setAttribute('style','fill:rgb(255, 0, 0);')
+        svg_cursor.appendChild(rect);
         
-        const cursor = new component(0, 0, 10, 50, "red");
-        cursor.update();
-        return cursor;
+        return rect;
     }
 
-    const cursor = createCursor();
+    const cursor_height = 50;
+    const cursor_width = 10;
+    const cursor = createCursor(cursor_width, cursor_height);
 
     let index = -1;
-    /*
-    document.addEventListener("keydown", (e) => {
-        if (e.key === "ArrowLeft") {index--;} else {index++;}
-        cursor.clear();
-        cursor.x = centroids[index][0] - Math.floor(cursor.width / 2);
-        cursor.y = centroids[index][1] - Math.floor(cursor.height / 2);
-        cursor.update();
-    });*/
 
     function goToNextNote() {
         index++;
-        cursor.clear();
-        cursor.x = centroids[index][0] - Math.floor(cursor.width / 2);
-        cursor.y = centroids[index][1] - Math.floor(cursor.height / 2);
-        cursor.update();
+        cursor.setAttribute('x', centroids[index][0] - 
+            Math.floor(cursor_width / 2));
+        cursor.setAttribute('y', centroids[index][1] - 
+            Math.floor(cursor_height / 2));
+        scrollTo(cursor);
     }
 
     function getCurrentNote() {
@@ -192,6 +181,16 @@ export default (() => {
             octave: 4
         }
         return note;
+    }
+
+    function scrollTo(object) {
+        setTimeout(() => {
+            seamless.scrollIntoView(object, {
+                behavior: 'auto',
+                block: 'center',
+                inline: 'center'}
+            );
+        }, 0);
     }
 
     const body = document.getElementsByTagName('body')[0];
