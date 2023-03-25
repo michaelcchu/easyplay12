@@ -1,274 +1,203 @@
 export default (() => {
+    let centroids = [];
 
-    let notes; let i; let tk; let mei;
+    function main() {
+        const img_rgb = cv.imread('image');
+        const img_gray = new cv.Mat();
+        cv.cvtColor(img_rgb, img_gray, cv.COLOR_BGR2GRAY);
+        cv.imshow("img_gray", img_gray);
 
-    const val = {"c":0,"d":2,"e":4,"f":5,"g":7,"a":9,"b":11,"#":1,"&":-1,"":0};
-    const accidentalVal = {null:0,"s":1,"f":-1,"ss":2,"x":2,"ff":-2,"xs":3,
-    "sx":3,"ts":3,"tf":-3,"n":0,"nf":0,"ns":0,
-    "su":0.75,"sd":0.25,"fu":-0.25,"fd":-0.75,"nu":0,"nd":0}
+        const number_of_templates = 9;
+
+        // data about the templates:
+        // notehead centroids:
+        // compute these by hand
+        // in the form of [x,y]
+        const notehead_centroids = [[8,7],[8,5],[8,27],[8,30],[9,8],[7,20],
+            [9,7],[9,5],[11,37]];
+
+        const notes = cv.Mat.zeros(img_gray.rows, img_gray.cols, cv.CV_8UC4);
+        const clefs = cv.Mat.zeros(img_gray.rows, img_gray.cols, cv.CV_8UC4);
+
+        // loop through every template
+        for (let num = 1; num <= number_of_templates; num++) {
+            const template = "template" + num;
+            const temp_rgb = cv.imread(template);
+            const temp_gray = new cv.Mat();
+            cv.cvtColor(temp_rgb, temp_gray, cv.COLOR_BGR2GRAY);
+            cv.imshow(template+"_canvas", temp_gray);
+
+            const search = new cv.Mat();
+            const mask = new cv.Mat();
+            cv.matchTemplate(img_gray, temp_gray, search, 
+                cv.TM_CCOEFF_NORMED, mask);
+
+            const matches = new cv.Mat();
+            cv.threshold(search, matches, 0.8, 1, cv.THRESH_BINARY);
+            
+            const color = new cv.Scalar(255, 0, 0, 255);
+
+            const notehead_centroid = notehead_centroids[num - 1];
+
+            let index = 0;
+            for (let i = 0; i < search.rows; i++) {
+                for (let j = 0; j < search.cols; j++) {
+                    const value = search.data32F[index];
+                    if (value >= 0.8) {
+                        const cx = j + notehead_centroid[0];
+                        const cy = i + notehead_centroid[1];
+                        let image_to_modify = notes;
+                        if (num === 9) {
+                            image_to_modify = clefs;
+                        }
+                        image_to_modify.ucharPtr(cy,cx)[0] = 255;
+                        image_to_modify.ucharPtr(cy,cx)[3] = 255;
+                    }
+                    index++;
+                }
+            }
+        }
+
+        cv.imshow('notes', notes);
+        cv.imshow('left_edges', clefs);
+
+
+        // Find the contours of the notes.
+        // Use this to count the number of notes.
+
+        // Also find the countours of left_edges.
+        // Use this to count the number of left_edges.
+
+        function process_contours(src, output_canvas) {
+            let dst = cv.Mat.zeros(src.rows, src.cols, cv.CV_8UC4);
+            let dst_centroids = cv.Mat.zeros(src.rows, src.cols, cv.CV_8UC4);
+            cv.cvtColor(src, src, cv.COLOR_RGBA2GRAY, 0);
+            
+            cv.threshold(src, src, 1, 255, cv.THRESH_BINARY);
+            let contours = new cv.MatVector();
+            let hierarchy = new cv.Mat();
+            cv.findContours(src, contours, hierarchy, cv.RETR_CCOMP,
+                cv.CHAIN_APPROX_SIMPLE);
+
+            console.log(contours);
+            console.log(contours.size());
+
+            // draw contours
+            const color = new cv.Scalar(0, 0, 255, 255);
+            const centroids = [];
+            for (let i = 0; i < contours.size(); ++i) {
+                const contour = contours.get(i);
+                const rect = cv.boundingRect(contour);
+                const cx = Math.round(rect.x + rect.width / 2);
+                const cy = Math.round(rect.y + rect.height / 2);
+                centroids.unshift([cx, cy]);
+                dst_centroids.ucharPtr(cy,cx)[0] = 255;
+                dst_centroids.ucharPtr(cy,cx)[3] = 255;
+            }
+            cv.imshow(output_canvas, dst_centroids);
+
+            src.delete(); dst.delete(); contours.delete(); hierarchy.delete();
+
+            return centroids;
+        }
+
+        centroids = process_contours(notes, 'note_center_points');
+        const stave_centroids = process_contours(clefs, 
+            'left_edge_center_points');
+
+        const stave_count = stave_centroids.length;
+        const notes_by_stave = [...Array(stave_count)].map(e => []);
+
+        for (const note of centroids) {
+            const note_y_coord = note[1];
+
+            const distances = Array(stave_count);
+            for (let i=0; i < stave_count; i++) {
+                const stave_y_coord = stave_centroids[i][1];
+                distances[i] = Math.abs(note_y_coord - stave_y_coord);
+            }
+            const minimum_distance = Math.min(...distances);
+            const index_of_minimum = distances.indexOf(minimum_distance);
+
+            notes_by_stave[index_of_minimum].push(note);
+        }
+
+        // loop through notes_by_stave
+        // sort each stave by x-position
+        for (let i=0; i < stave_count; i++) {
+            const stave = notes_by_stave[i];
+            stave.sort((a,b) => {return (a[0] - b[0]);});
+        }
+
+        centroids = notes_by_stave.flat();
+
+        console.log(notes_by_stave);
+        console.log(centroids);
+    }
+
+    // cursor
+    function createCursor(w, h) {
+        const svg_cursor = document.getElementById('cursor_svg');
+        svg_cursor.setAttribute('height', 
+            document.getElementById('image').height);
+        svg_cursor.setAttribute('width', 
+            document.getElementById('image').width);
+        
+        svg_cursor.setAttribute("opacity","0.5");
+
+        const svgns = "http://www.w3.org/2000/svg";
+        const rect = document.createElementNS(svgns, 'rect');
+        rect.setAttribute('x', '0');
+        rect.setAttribute('y', '0');
+        rect.setAttribute('height', ''+h);
+        rect.setAttribute('width', ''+w);
+        rect.setAttribute('style','fill:rgb(255, 0, 0);')
+        svg_cursor.appendChild(rect);
+        
+        return rect;
+    }
+
+    const cursor_height = 50;
+    const cursor_width = 10;
+    const cursor = createCursor(cursor_width, cursor_height);
+
+    let index = -1;
+
+    function goToNextNote() {
+        index++;
+        cursor.setAttribute('x', centroids[index][0] - 
+            Math.floor(cursor_width / 2));
+        cursor.setAttribute('y', centroids[index][1] - 
+            Math.floor(cursor_height / 2));
+        scrollTo(cursor);
+    }
 
     function getCurrentNote() {
-        let playingNotes = document.querySelectorAll('g.note.playing');
-        for (let playingNote of playingNotes) {
-            const id = playingNote.getAttribute("id");
-            const meiNote = mei.querySelector("[*|id='"+id+"']");
-            let pitch = val[meiNote.getAttribute("pname")];
-            const accidGes = meiNote.getAttribute("accid.ges");
-            const accid = meiNote.getAttribute("accid");
-            if (accid) {
-                pitch += accidentalVal[accid];
-            } else {
-                pitch += accidentalVal[accidGes];
-            }
-            const note = {
-                pitch: pitch,
-                octave: +meiNote.getAttribute("oct")
-            }
-            return note;
+        const note = {
+            pitch: 10,
+            octave: 4
         }
+        return note;
     }
 
-    function unhighlightCurrentNote() {
-        // Remove the attribute 'playing' of all notes previously playing
-        let playingNotes = document.querySelectorAll('g.note.playing');
-        for (let playingNote of playingNotes) {
-            playingNote.classList.remove("playing");
-        }
-    }
-
-    function highlightCurrentNote() {
-        const id = notes[i].getAttribute("xml:id");
-        const note = document.getElementById(id);
-        note.classList.add("playing");
-        scrollToNote(note);
-    }
-
-    function scrollToNote(note) {
+    function scrollTo(object) {
         setTimeout(() => {
-            seamless.scrollIntoView(note, {
+            seamless.scrollIntoView(object, {
                 behavior: 'auto',
                 block: 'center',
                 inline: 'center'}
-            );}, 0);
-    }
-
-    function goToNextNote() {
-        unhighlightCurrentNote();
-        if (i < notes.length) {
-            i++;
-            if (i < notes.length) {highlightCurrentNote();}
-        }
-    }
-
-    function goToPreviousNote() {
-        unhighlightCurrentNote();
-        if (i >= 0) {
-            i--;
-            if (i >= 0) {highlightCurrentNote();}
-        }
-    }
-
-    function main() {
-        tk = new verovio.toolkit();
-        console.log("Verovio has loaded!");
-
-        const zoomFactor = document.getElementById("zoomFactor");
-        zoomFactor.addEventListener("change", setZoom);    
-
-        tk.setOptions({
-            breaks: "none",
-            mnumInterval: 1,
-            scale: +zoomFactor.value
-        });
-
-        function setup() {
-            document.getElementById("container").innerHTML = tk.renderToSVG(1); 
-            i = -1;
-            const meiContent = tk.getMEI();
-            const parser = new DOMParser();
-            mei = parser.parseFromString(meiContent, "text/xml");
-            console.log(mei);
-            notes = Array.from(mei.querySelectorAll("note"));
-
-            // Remove tied notes
-            const ties = mei.querySelectorAll("tie");
-            for (const tie of ties) {
-                const skipNoteId = tie.getAttribute("endid").slice(1);
-                const skipNoteIndex = notes.findIndex((note) => {
-                    return (note.getAttribute("xml:id") === skipNoteId);
-                });
-                notes.splice(skipNoteIndex, 1);
-            }
-            
-            if (notes.length > 0) {
-                const id = notes[0].getAttribute("xml:id");
-                const note = document.getElementById(id);
-                scrollToNote(note);
-            }
-        }
-    
-        fetch("./data/Beethoven__Symphony_No._9__Op._125-Clarinetto_1_in_C_(Clarinet).mxl")
-        .then( response => response.arrayBuffer() )
-        .then( data => {tk.loadZipDataBuffer(data); setup();} )
-        .catch( e => {console.log( e );} );
-    
-        const input = document.getElementById("input");
-        input.addEventListener("change", readFile);
-    
-        const go = document.getElementById("go");
-        go.addEventListener("click", goToMeasure);
-
-        let interval;
-        let cleanSlate = true;
-        let timeoutInProgress = false;
-
-        function repeat(f) {
-            if (cleanSlate) {
-                f();
-                if (!timeoutInProgress) {
-                    cleanSlate = false;
-                    setTimeout(() => {
-                        if (!cleanSlate) {
-                            interval = setInterval(f, 200);
-                        }
-                        timeoutInProgress = false;
-                    }, 400);
-                    timeoutInProgress = true;    
-                }
-            }
-        }
-
-        function stopMoving() {
-            clearInterval(interval); cleanSlate = true;
-        }
-
-        const left = document.getElementById("move-left");
-        left.addEventListener("pointerdown", () => {repeat(goToPreviousNote);});
-        left.addEventListener("pointerup", stopMoving);
-
-        const right = document.getElementById("move-right");
-        right.addEventListener("pointerdown", () => {repeat(goToNextNote);});
-        right.addEventListener("pointerup", stopMoving);
-
-        document.addEventListener("keydown", moveCursor);
-    
-        function goToMeasure() {
-            function getMeasure(note) {
-                return +note.closest("measure").getAttribute("n");
-            }
-
-            unhighlightCurrentNote();
-
-            function getCurrentMeasure() {
-                if (i < 0) {
-                    if (notes.length > 0) {
-                        return -1;
-                    } else {
-                        return null;
-                    }
-                } else if (i >= notes.length) {
-                    if (notes.length > 0) {
-                        return getMeasure(notes[notes.length - 1]);
-                    } else {
-                        return null;
-                    }
-                } else {
-                    return getMeasure(notes[i]);
-                }
-            }
-
-            const measureInput = document.getElementById("measureInput");
-            let measure = +measureInput.value;
-            
-            if (notes.length > 0) {
-                const lastMeasure = getMeasure(notes[notes.length - 1]);
-                if (measure > lastMeasure) {
-                    measure = lastMeasure;
-                }
-
-                while (getCurrentMeasure() < measure) {i++;}
-                while (getCurrentMeasure() > measure) {i--;}
-                
-                highlightCurrentNote();
-    
-            }
-
-            document.activeElement.blur();
-        }
-
-        function moveCursor(e) {
-            if (document.activeElement.nodeName !== 'INPUT') {
-                if (e.key === "ArrowLeft") {goToPreviousNote();}
-                else if (e.key === "ArrowRight") {goToNextNote();}
-            }   
-        }
-    
-        function readFile() {    
-            for (const file of input.files) {
-                const reader = new FileReader();
-                const name = file.name.toLowerCase();
-                if (name.endsWith(".musicxml") || name.endsWith(".xml") ||
-                    name.endsWith(".mei")) {
-                    reader.addEventListener("load", (e) => {
-                        tk.loadData(e.target.result);
-                        setup();
-                    });
-                    reader.readAsText(file);
-                } else if (name.endsWith(".mxl")) {
-                    reader.addEventListener("load", (e) => {
-                        tk.loadZipDataBuffer(e.target.result);
-                        setup();
-                    });
-                    reader.readAsArrayBuffer(file);
-                }
-            }
-        }
-
-        function setZoom() {
-            tk.setOptions({scale: +zoomFactor.value});
-            document.getElementById("container").innerHTML = tk.renderToSVG(1);
-            setTimeout(() => {
-                if (notes.length > 0) {
-                    let noteIndex;
-                    if (i < 0) { noteIndex = 0; }
-                    else if (i >= notes.length) {noteIndex = notes.length - 1;}
-                    else {noteIndex = i; highlightCurrentNote();}
-                    const meiNote = notes[noteIndex];
-                    const id = meiNote.getAttribute("xml:id");
-                    const svgNote = document.getElementById(id);
-                    scrollToNote(svgNote);
-                }    
-            }, 0);
-
-            document.activeElement.blur(); 
-        }
-
-        // Turn off default event listeners
-        const ets = ['focus', 'pointerover', 'pointerenter', 'pointerdown', 
-            'touchstart', 'gotpointercapture', 'pointermove', 'touchmove', 
-            'pointerup', 'lostpointercapture', 'pointerout', 'pointerleave', 
-            'touchend'];
-        for (let et of ets) {
-            left.addEventListener(et, function(event) {
-                event.preventDefault();
-                event.stopPropagation();
-            }, false);
-            right.addEventListener(et, function(event) {
-                event.preventDefault();
-                event.stopPropagation();
-            }, false); 
-        }
-
+            );
+        }, 0);
     }
 
     const body = document.getElementsByTagName('body')[0];
     const script = document.createElement('script');
-    script.src ="./verovio-toolkit-wasm.js";
-    script.onload = () => {verovio.module.onRuntimeInitialized = main;}
+    script.src ="./opencv.js";
+    script.onload = () => {cv['onRuntimeInitialized'] = main;}
     body.appendChild(script);
 
     return {
-        getCurrentNote: getCurrentNote,
-        goToNextNote: goToNextNote
+        goToNextNote: goToNextNote,
+        getCurrentNote: getCurrentNote
     };
 })();
